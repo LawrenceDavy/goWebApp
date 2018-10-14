@@ -1,22 +1,17 @@
 package main
 
 import (
+	"github.com/LawrenceDavy13/goWebApp/models"
+	"github.com/LawrenceDavy13/goWebApp/sessions"
+	"github.com/LawrenceDavy13/goWebApp/utils"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
-	"html/template"
 	"net/http"
-	"github.com/LawrenceDavy13/goWebApp/model"
 )
-
-var templates *template.Template
-var store = sessions.NewCookieStore([]byte("k1ll-m0v£s"))
 
 func main() {
 
 	models.Init()
-
-	//load html files
-	templates = template.Must(template.ParseGlob("templates/*html"))
+	utils.LoadTemplates("templates/*html")
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", AuthRequired(indexGetHandler)).Methods("GET")
@@ -42,10 +37,10 @@ func main() {
 
 }
 
-// middleware authnitcastion
+// middleware authentication
 func AuthRequired(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session, _ := store.Get(r, "session")
+		session, _ := sessions.Store.Get(r, "session")
 		_, ok := session.Values["username"]
 		if !ok {
 			http.Redirect(w, r, "/login", 302)
@@ -62,7 +57,7 @@ func indexGetHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Internal Server Error"))
 		return
 	}
-	templates.ExecuteTemplate(w, "index.html", comments)
+	utils.ExecuteTemplate(w, "index.html", comments)
 }
 
 func indexPostHandler(w http.ResponseWriter, r *http.Request) {
@@ -78,21 +73,21 @@ func indexPostHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func loginGetHandler(w http.ResponseWriter, r *http.Request) {
-	templates.ExecuteTemplate(w, "login.html", nil)
+	utils.ExecuteTemplate(w, "login.html", nil)
 }
 
 func loginPostHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	username := r.PostForm.Get("username")
 	password := r.PostForm.Get("password")
-	err := models.Authentication(username, password)
+	err := models.AuthenticateUser(username, password)
 
 	if err != nil {
 		switch err {
 		case models.ErrUserNotFound:
-			templates.ExecuteTemplate(w, "login.html", "Unknown user")
+			utils.ExecuteTemplate(w, "login.html", "Unknown user")
 		case models.ErrInvalidLogin:
-			templates.ExecuteTemplate(w, "login.html", "invalid login")
+			utils.ExecuteTemplate(w, "login.html", "invalid login")
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Internal Server Error"))
@@ -101,14 +96,14 @@ func loginPostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	
-	session, _ := store.Get(r, "session")
+	session, _ := sessions.Store.Get(r, "session")
 	session.Values["username"] = username
 	session.Save(r, w)
 	http.Redirect(w, r, "/", 302)
 }
 
 func registerGetHandler(w http.ResponseWriter, r *http.Request) {
-	templates.ExecuteTemplate(w, "register.html", nil)
+	utils.ExecuteTemplate(w, "register.html", nil)
 }
 
 func registerPostHandler(w http.ResponseWriter, r *http.Request) {
